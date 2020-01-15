@@ -1,4 +1,4 @@
-package pgxpool_test
+package dynamicpgxpool_test
 
 import (
 	"context"

@@ -1,4 +1,4 @@
-package pgxpool
+package dynamicpgxpool
 
 import (
 	"github.com/jackc/pgconn"
