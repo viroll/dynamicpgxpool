@@ -78,6 +78,9 @@ type Pool struct {
 // Config is the configuration struct for creating a pool. It must be created by ParseConfig and then it can be
 // modified. A manually initialized ConnConfig will cause ConnectConfig to panic.
 type Config struct {
+	// CredentialsProvider is used to get current username and password.  If null, whatever is in ConnConfig will be used.
+	CredentialsProvider CredentialsProvider
+
 	ConnConfig *pgx.ConnConfig
 
 	// AfterConnect is called after a connection is established, but before it is added to the pool.
@@ -135,6 +138,14 @@ func ConnectConfig(ctx context.Context, config *Config) (*Pool, error) {
 
 	p.p = puddle.NewPool(
 		func(ctx context.Context) (interface{}, error) {
+			if config.CredentialsProvider != nil {
+				username, password, err := config.CredentialsProvider.GetCredentials()
+				if err == nil {
+					config.ConnConfig.User = username
+					config.ConnConfig.Password = password
+				}
+			}
+
 			conn, err := pgx.ConnectConfig(ctx, config.ConnConfig)
 			if err != nil {
 				return nil, err

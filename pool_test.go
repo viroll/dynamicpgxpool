@@ -2,14 +2,16 @@ package dynamicpgxpool_test
 
 import (
 	"context"
+	"fmt"
 	"os"
+	"sync"
 	"testing"
 	"time"
 
 	"github.com/jackc/pgx/v4"
-	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	pgxpool "github.com/viroll/dynamicpgxpool"
 )
 
 func TestConnect(t *testing.T) {
@@ -480,4 +482,59 @@ func TestConnPoolQueryConcurrentLoad(t *testing.T) {
 	for i := 0; i < n; i++ {
 		<-done
 	}
+}
+
+type MockCredProvider struct {
+	potentials []struct {
+		user string
+		pass string
+	}
+	pos int
+}
+
+func (p *MockCredProvider) GetCredentials() (username string, password string, err error) {
+	if p.pos >= len(p.potentials) {
+		p.pos = 0
+	}
+	if p.pos >= len(p.potentials) {
+		return "", "", fmt.Errorf("no username or passwords available")
+	}
+	ret := p.potentials[p.pos]
+	fmt.Printf("Returning creds %s:%s\n", ret.user, ret.pass)
+	p.pos++
+
+	return ret.user, ret.pass, nil
+}
+
+func TestConnectConfig(t *testing.T) {
+	t.Skip("This test requires extra setup")
+
+	cfg, err := pgxpool.ParseConfig(os.Getenv("PGX_TEST_DATABASE"))
+	require.NoError(t, err)
+	cfg.CredentialsProvider = &MockCredProvider{potentials: []struct {
+		user string
+		pass string
+	}{
+		{"user1", "pass1"},
+		{"user2", "pass2"},
+		{"user3", "pass3"},
+	}}
+	cfg.MaxConns = 3
+
+	ctx := context.Background()
+	p, err := pgxpool.ConnectConfig(ctx, cfg)
+	require.NoError(t, err)
+
+	var wg sync.WaitGroup
+	for i := 0; i < 30; i++ {
+		wg.Add(1)
+		go func() {
+			_, err := p.Exec(ctx, "SELECT 1;")
+			require.NoError(t, err)
+			fmt.Printf("Returned\n")
+			wg.Done()
+		}()
+	}
+
+	wg.Wait()
 }
