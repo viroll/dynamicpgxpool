@@ -139,7 +139,7 @@ func ConnectConfig(ctx context.Context, config *Config) (*Pool, error) {
 	p.p = puddle.NewPool(
 		func(ctx context.Context) (interface{}, error) {
 			if config.CredentialsProvider != nil {
-				username, password, err := config.CredentialsProvider.GetCredentials()
+				username, password, err := config.CredentialsProvider.Credentials()
 				if err == nil {
 					config.ConnConfig.User = username
 					config.ConnConfig.Password = password
@@ -154,7 +154,7 @@ func ConnectConfig(ctx context.Context, config *Config) (*Pool, error) {
 			if p.afterConnect != nil {
 				err = p.afterConnect(ctx, conn)
 				if err != nil {
-					conn.Close(ctx)
+					_ = conn.Close(ctx)
 					return nil, err
 				}
 			}
@@ -171,7 +171,7 @@ func ConnectConfig(ctx context.Context, config *Config) (*Pool, error) {
 		func(value interface{}) {
 			go func() {
 				ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-				value.(*connResource).conn.Close(ctx)
+				_ = value.(*connResource).conn.Close(ctx)
 				cancel()
 			}()
 		},

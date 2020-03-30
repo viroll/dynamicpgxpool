@@ -1,4 +1,4 @@
-module github.com/viroll/dynamicpgxpool
+module github.com/viroll/dynamicpgxpool/v2
 
 go 1.13
 

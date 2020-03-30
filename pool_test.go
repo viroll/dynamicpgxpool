@@ -492,7 +492,7 @@ type MockCredProvider struct {
 	pos int
 }
 
-func (p *MockCredProvider) GetCredentials() (username string, password string, err error) {
+func (p *MockCredProvider) Credentials() (username string, password string, err error) {
 	if p.pos >= len(p.potentials) {
 		p.pos = 0
 	}
